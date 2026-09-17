@@ -6,7 +6,7 @@ import {
 } from "./auth.schema.ts";
 import { login, register } from "./auth.service.ts";
 import { StatusCodes } from "http-status-codes";
-import { findUserExisting } from "./auth-repo.ts";
+import { findUserExisting, hashPassword } from "./auth-repo.ts";
 import crypto from "crypto";
 import sendMail from "../services/SendMail.ts";
 import fs from "fs";
@@ -83,7 +83,7 @@ const loginUser = async (req: Request, res: Response) => {
 const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    console.log("request bodu", req.body);
+
     if (!email) {
       return res.status(400).json({
         message: "Email  required",
@@ -100,13 +100,14 @@ const forgotPassword = async (req: Request, res: Response) => {
 
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetCode = token;
-    user.tokenExpiresAt = new Date(Date.now() + 60 * 1000);
+    user.tokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const templatePath = path.join(
       process.cwd(),
       "src",
       "templates",
       "resetEmail.html",
     );
+    await user.save();
     let htmlContent = await fs.promises.readFile(templatePath, "utf-8");
     htmlContent = htmlContent.replace(/\[Token\]/g, token);
 
@@ -118,7 +119,7 @@ const forgotPassword = async (req: Request, res: Response) => {
     };
     await sendMail(emailPayload);
 
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: `Reset token sent to ${email}`,
       success: true,
     });
@@ -131,11 +132,12 @@ const forgotPassword = async (req: Request, res: Response) => {
 };
 
 const validateToken = async (req: Request, res: Response) => {
-  const { token } = req.body;
+  const { token, email } = req.body;
+  console.log(req.body);
 
   if (!token) return;
 
-  const user = await UserModel.findOne({ resetToken: token });
+  const user = await UserModel.findOne({ email });
 
   if (!user) {
     return res.status(StatusCodes.NOT_FOUND).json({
@@ -144,16 +146,25 @@ const validateToken = async (req: Request, res: Response) => {
     });
   }
 
-  if (user.tokenExpiresAt && user.tokenExpiresAt.getTime() < Date.now()) {
+  if (
+    user.tokenExpiresAt &&
+    user.tokenExpiresAt.getTime() < Date.now() &&
+    user?.resetCode === token
+  ) {
     return res.status(StatusCodes.BAD_REQUEST).json({
       message: "Token has expired",
       success: false,
     });
   }
   const resetToken = crypto.randomBytes(24).toString("hex");
-  user.resetToken = resetToken;
 
-  res.cookie("reset-token", resetToken, {
+  user.resetToken = resetToken;
+  user.resetCode = null;
+  user.tokenExpiresAt = null;
+
+  await user.save();
+
+  res.cookie("resetToken", resetToken, {
     httpOnly: true,
     secure: config.node_env === "production",
     sameSite: "strict",
@@ -166,26 +177,44 @@ const validateToken = async (req: Request, res: Response) => {
 };
 
 const resetPassword = async (req: Request, res: Response) => {
-  const { resetToken, password } = req.body;
-  if (!resetToken || !password) {
-    return res.status(400).json({
-      message: "All fields required",
-      status: false,
-    });
-  }
+  try {
+    const { password } = req.body;
+    const { resetToken } = req.cookies;
 
-  const user = await UserModel.findOne({ resetToken: resetToken });
-  if (!user) {
-    return res.status(400).json({
-      message: "User not found",
-      success: false,
+    console.log(resetToken);
+
+    if (!resetToken || !password) {
+      return res.status(400).json({
+        message: "Password and reset token are required",
+        success: false,
+      });
+    }
+
+    const user = await UserModel.findOne({ resetToken });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid reset token",
+        success: false,
+      });
+    }
+    const hashedPassword = await hashPassword(password);
+    user.password = hashedPassword;
+    user.resetToken = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Password Reset successful!",
+      success: true,
+      user: {
+        email: user.email,
+        name: user.username,
+      },
     });
+  } catch (err) {
+    console.log(err);
   }
-  user.password = password;
-  return res.status(200).json({
-    message: "Password Reset successful!",
-    success: true,
-  });
 };
 
 const logout = async (req: Request, res: Response) => {

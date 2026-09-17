@@ -4,10 +4,10 @@ export interface User {
   username: string;
   password: string;
   email: string;
-  resetToken: string;
-  tokenExpiresAt: Date;
+  resetToken: string | null;
+  tokenExpiresAt: Date | null;
   role: "ADMIN" | "USER";
-  resetCode: string;
+  resetCode: string | null;
   firstName: string;
   lastName: string;
   googleId: string;
