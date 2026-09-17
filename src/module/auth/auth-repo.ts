@@ -5,7 +5,7 @@ import config from "../../../config/constants.ts";
 import type { Response } from "express";
 
 const createUser = async (data: {
-  name: string;
+  username: string;
   email: string;
   password: string;
 }) => {
@@ -41,4 +41,10 @@ const generateToken = (userId: string, res: Response) => {
   return token;
 };
 
-export { createUser, findUserExisting, hashPassword, generateToken, comparePassword };
+export {
+  createUser,
+  findUserExisting,
+  hashPassword,
+  generateToken,
+  comparePassword,
+};

@@ -9,16 +9,16 @@ import {
 
 const register = async (
   data: {
-    name: string;
+    username: string;
     email: string;
     password: string;
   },
   res: Response,
 ) => {
-  const { name, email, password } = data;
+  const { username, email, password } = data;
   const hashedPassword = await hashPassword(password);
   const user = await createUser({
-    name: name,
+    username: username,
     email: email.toString(),
     password: hashedPassword,
   });

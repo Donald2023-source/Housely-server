@@ -1,5 +1,5 @@
-const nodemailer = require("nodemailer");
-const { google } = require("googleapis");
+import nodemailer from "nodemailer";
+import { google } from "googleapis";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_SECRET;
@@ -17,7 +17,8 @@ interface mailProps {
   subject: string;
   html: any;
 }
-oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN! });
+
 
 async function sendMail({ to, subject, html }: mailProps) {
   try {
@@ -56,4 +57,4 @@ async function sendMail({ to, subject, html }: mailProps) {
   }
 }
 
-export default sendMail
+export default sendMail;

@@ -8,6 +8,10 @@ export interface User {
   tokenExpiresAt: Date;
   role: "ADMIN" | "USER";
   resetCode: string;
+  firstName: string;
+  lastName: string;
+  googleId: string;
+  avatar: string;
 }
 
 const UserSchema = new mongoose.Schema<User>(
@@ -30,6 +34,26 @@ const UserSchema = new mongoose.Schema<User>(
     },
 
     resetCode: {
+      type: String,
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    firstName: {
+      type: String,
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      trim: true,
+    },
+
+    avatar: {
       type: String,
     },
 

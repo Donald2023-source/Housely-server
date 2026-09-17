@@ -15,26 +15,42 @@ import UserModel from "../../models/user.ts";
 import config from "../../../config/constants.ts";
 
 const registerUser = async (req: Request, res: Response) => {
-  const result = registerSchema.safeParse(req.body);
+  try {
+    const result = registerSchema.safeParse(req.body);
 
-  if (!result.success) {
-    return res.status(400).json({
-      message: "Invalid input",
-      errors: result.error.issues,
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Invalid input",
+        errors: result.error.issues,
+      });
+    }
+
+    const { username, email, password } = result.data;
+
+    const existingUser = await findUserExisting(email);
+    if (existingUser) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        data: {
+          message: "User already exists",
+        },
+      });
+    }
+    const { user, token } = await register({ username, email, password }, res);
+    return res.status(StatusCodes.CREATED).json({
+      message: "user created successfully",
+      success: true,
+      data: {
+        name: user.username,
+        email: user.email,
+        token: token,
+      },
+    });
+  } catch (err) {
+    res.status(StatusCodes.BAD_REQUEST).json({
+      message: err,
+      success: false,
     });
   }
-
-  const { name, email, password } = result.data;
-  const { user, token } = await register({ name, email, password }, res);
-  return res.status(StatusCodes.CREATED).json({
-    message: "user created successfully",
-    success: true,
-    data: {
-      name: user.username,
-      email: user.email,
-      token: token,
-    },
-  });
 };
 const loginUser = async (req: Request, res: Response) => {
   const result = loginSchema.safeParse(req.body);
@@ -65,45 +81,53 @@ const loginUser = async (req: Request, res: Response) => {
 };
 
 const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({
-      message: "Email  required",
+  try {
+    const { email } = req.body;
+    console.log("request bodu", req.body);
+    if (!email) {
+      return res.status(400).json({
+        message: "Email  required",
+        success: false,
+      });
+    }
+    const user = await findUserExisting(email);
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: "User not found",
+        success: false,
+      });
+    }
+
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetCode = token;
+    user.tokenExpiresAt = new Date(Date.now() + 60 * 1000);
+    const templatePath = path.join(
+      process.cwd(),
+      "src",
+      "templates",
+      "resetEmail.html",
+    );
+    let htmlContent = await fs.promises.readFile(templatePath, "utf-8");
+    htmlContent = htmlContent.replace(/\[Token\]/g, token);
+
+    console.log("Mail sending...");
+    let emailPayload = {
+      to: email,
+      subject: "Reset From Housely",
+      html: htmlContent,
+    };
+    await sendMail(emailPayload);
+
+    return res.status(StatusCodes.OK).json({
+      message: `Reset token sent to ${email}`,
+      success: true,
+    });
+  } catch (err) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      message: err,
       success: false,
     });
   }
-  const user = await findUserExisting(email);
-  if (!user) {
-    return res.status(StatusCodes.NOT_FOUND).json({
-      message: "User not found",
-      success: false,
-    });
-  }
-
-  const token = Math.floor(100000 + Math.random() * 900000).toString();
-  user.resetCode = token;
-  user.tokenExpiresAt = new Date(Date.now() + 60 * 1000);
-  const templatePath = path.join(
-    process.cwd(),
-    "email",
-    "templates",
-    "welcome.html",
-  );
-  let htmlContent = await fs.promises.readFile(templatePath, "utf-8");
-  htmlContent = htmlContent.replace(/\[Token\]/g, token);
-
-  console.log("Mail sending...");
-  let emailPayload = {
-    to: email,
-    subject: "Reset From Housely",
-    html: htmlContent,
-  };
-  await sendMail(emailPayload);
-
-  return res.status(StatusCodes.OK).json({
-    message: `Reset token sent to ${email}`,
-    success: true,
-  });
 };
 
 const validateToken = async (req: Request, res: Response) => {
