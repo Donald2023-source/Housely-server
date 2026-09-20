@@ -15,42 +15,37 @@ import UserModel from "../../models/user.ts";
 import config from "../../../config/constants.ts";
 
 const registerUser = async (req: Request, res: Response) => {
-  try {
-    const result = registerSchema.safeParse(req.body);
+  const result = registerSchema.safeParse(req.body);
 
-    if (!result.success) {
-      return res.status(400).json({
-        message: "Invalid input",
-        errors: result.error.issues,
-      });
-    }
-
-    const { username, email, password } = result.data;
-
-    const existingUser = await findUserExisting(email);
-    if (existingUser) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        data: {
-          message: "User already exists",
-        },
-      });
-    }
-    const { user, token } = await register({ username, email, password }, res);
-    return res.status(StatusCodes.CREATED).json({
-      message: "user created successfully",
-      success: true,
-      data: {
-        name: user.username,
-        email: user.email,
-        token: token,
-      },
-    });
-  } catch (err) {
-    res.status(StatusCodes.BAD_REQUEST).json({
-      message: err,
-      success: false,
+  if (!result.success) {
+    return res.status(400).json({
+      message: "Invalid input",
+      errors: result.error.issues,
     });
   }
+
+  const { username, email, password } = result.data;
+  console.log(result);
+  console.log("data");
+
+  const existingUser = await findUserExisting(email);
+  if (existingUser) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      data: {
+        message: "User already exists",
+      },
+    });
+  }
+  const { user, token } = await register({ username, email, password }, res);
+  return res.status(StatusCodes.CREATED).json({
+    message: "user created successfully",
+    success: true,
+    data: {
+      name: user.username,
+      email: user.email,
+      token: token,
+    },
+  });
 };
 const loginUser = async (req: Request, res: Response) => {
   const result = loginSchema.safeParse(req.body);
@@ -217,6 +212,20 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+const getAuthenticatedUser = async (req: Request, res: Response) => {
+  try {
+    const user = req?.user;
+    return res.status(StatusCodes.OK).json({
+      user: user,
+      success: true,
+    });
+  } catch (err) {
+    return res.json({
+      error: err,
+    });
+  }
+};
+
 const logout = async (req: Request, res: Response) => {
   res.cookie("jwt", "", {
     httpOnly: true,
@@ -231,4 +240,5 @@ export {
   forgotPassword,
   validateToken,
   resetPassword,
+  getAuthenticatedUser,
 };

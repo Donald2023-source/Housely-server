@@ -5,7 +5,9 @@
   "main": "app.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec tsx app.ts"
+    "dev": "nodemon --exec tsx app.ts",
+    "seed:properties": "tsx src/seed/property.ts",
+    "seed:agent": "tsx src/seed/agent.ts"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +27,7 @@
     "googleapis": "^181.0.0",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.6.0",
     "mongoose": "^9.10.1",
     "nodemailer": "^10.0.10",
     "passport": "^0.7.0",

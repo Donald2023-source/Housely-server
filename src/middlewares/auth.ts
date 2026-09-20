@@ -4,14 +4,6 @@ import jwt from "jsonwebtoken";
 import config from "../../config/constants.ts";
 import UserModel from "../models/user.ts";
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: NonNullable<Awaited<ReturnType<typeof UserModel.findOne>>>;
-    }
-  }
-}
-
 export const authMiddleWare = async (
   req: Request,
   res: Response,
